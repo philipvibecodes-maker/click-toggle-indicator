@@ -110,13 +110,13 @@ class TouchpadEndToEndTest(unittest.TestCase):
         if not cls.daemon.start_injecting(cls.name, PRESET_NAME):
             raise RuntimeError("Input Remapper could not start the virtual touchpad preset")
         cls.injecting = True
-        for keycode, button, offset_x in ((202, 1, -26), (197, 3, 30)):
-            cls.processes.append(subprocess.Popen(
-                [str(PROJECT / "click-toggle-indicator"), "--toggle-keycode",
-                 str(keycode), "--hold-button", str(button),
-                 "--offset-x", str(offset_x), "--offset-y", "18"],
-                stdout=subprocess.DEVNULL,
-            ))
+        cls.processes.append(subprocess.Popen(
+            [str(PROJECT / "click-toggle-indicator"), "--toggle-keycode", "202",
+             "--hold-button", "1", "--right-toggle-keycode", "197",
+             "--right-hold-button", "3", "--offset-x", "-26",
+             "--right-offset-x", "30", "--offset-y", "18"],
+            stdout=subprocess.DEVNULL,
+        ))
         time.sleep(0.2)
         for process in cls.processes:
             if process.poll() is not None:
@@ -168,6 +168,27 @@ class TouchpadEndToEndTest(unittest.TestCase):
     def test_right_click_toggle(self):
         self.toggle(900, 3, True)
         self.toggle(900, 3, False)
+
+    def test_crossing_midpoint_during_click(self):
+        for start, finish, button, other in ((100, 900, 1, 3),
+                                             (900, 100, 3, 1)):
+            self.device.write(self.ecodes.EV_ABS, self.ecodes.ABS_X, start)
+            self.device.write(self.ecodes.EV_KEY, self.ecodes.BTN_TOUCH, 1)
+            self.device.syn()
+            time.sleep(0.08)
+            self.device.write(self.ecodes.EV_KEY, self.ecodes.BTN_LEFT, 1)
+            self.device.syn()
+            time.sleep(0.08)
+            self.device.write(self.ecodes.EV_ABS, self.ecodes.ABS_X, finish)
+            self.device.syn()
+            time.sleep(0.08)
+            self.device.write(self.ecodes.EV_KEY, self.ecodes.BTN_LEFT, 0)
+            self.device.write(self.ecodes.EV_KEY, self.ecodes.BTN_TOUCH, 0)
+            self.device.syn()
+            wait_for_button(self.x11, button, True, self.processes)
+            self.assertFalse(self.x11.button_down(other))
+            click(self.device, start, self.ecodes)
+            wait_for_button(self.x11, button, False, self.processes)
 
     def test_left_click_during_keyboard_grab(self):
         self.x11.grab_keyboard()

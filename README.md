@@ -17,8 +17,9 @@ contact as `BTN_TOUCH` (code **330**). Input Remapper changes code 272 to the
 otherwise-unused keyboard key `KEY_F24` (code 194). Xorg receives that evdev key as
 raw X11 keycode 202 (`194 + 8`), which the daemon grabs without requiring a keysym in
 the active keyboard layout. A higher-priority combination of `ABS_X` in the right
-half and `BTN_LEFT` is mapped to `KEY_F19` (189 / raw X11 keycode 197). Code 330 is
-never remapped.
+half and `BTN_LEFT` is mapped to `KEY_F19` (189 / raw X11 keycode 197). One daemon
+handles both keys so a finger crossing the midpoint while the switch is pressed
+cannot toggle both buttons. Code 330 is never remapped.
 
 ## Requirements
 

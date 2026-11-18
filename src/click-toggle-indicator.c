@@ -40,6 +40,9 @@ static void usage(FILE *stream, const char *program) {
             "  --toggle-key NAME  keysym alternative to --toggle-keycode\n"
             "  --toggle-button N  mouse-button alternative to --toggle-key\n"
             "  --hold-button N    button held synthetically (default: 1)\n"
+            "  --right-toggle-keycode N  second X11 keycode for a shared click cycle\n"
+            "  --right-hold-button N    button held by the second key (default: 3)\n"
+            "  --right-offset-x N     second indicator horizontal offset (default: 30)\n"
             "  --size N           indicator diameter, 8..96 (default: 18)\n"
             "  --offset-x N       horizontal cursor offset (default: 18)\n"
             "  --offset-y N       vertical cursor offset (default: 18)\n"
@@ -180,6 +183,9 @@ int main(int argc, char **argv) {
     int toggle_keycode_value = 202;
     const char *toggle_key_name = NULL;
     int hold_button = 1;
+    int right_toggle_keycode = 0;
+    int right_hold_button = 3;
+    int right_offset_x = 30;
     int size = 18;
     int offset_x = 18;
     int offset_y = 18;
@@ -212,6 +218,12 @@ int main(int argc, char **argv) {
             toggle_button = 0;
         } else if (strcmp(option, "--hold-button") == 0) {
             if (!parse_int(value, 1, 255, &hold_button)) goto invalid_value;
+        } else if (strcmp(option, "--right-toggle-keycode") == 0) {
+            if (!parse_int(value, 8, 255, &right_toggle_keycode)) goto invalid_value;
+        } else if (strcmp(option, "--right-hold-button") == 0) {
+            if (!parse_int(value, 1, 255, &right_hold_button)) goto invalid_value;
+        } else if (strcmp(option, "--right-offset-x") == 0) {
+            if (!parse_int(value, -512, 512, &right_offset_x)) goto invalid_value;
         } else if (strcmp(option, "--size") == 0) {
             if (!parse_int(value, 8, 96, &size)) goto invalid_value;
         } else if (strcmp(option, "--offset-x") == 0) {
@@ -235,6 +247,12 @@ invalid_value:
 
     if (toggle_button != 0 && toggle_button == hold_button) {
         fprintf(stderr, "The toggle and held buttons must be different.\n");
+        return EXIT_FAILURE;
+    }
+    if (right_toggle_keycode != 0 &&
+        (toggle_keycode_value == 0 || right_toggle_keycode == toggle_keycode_value ||
+         right_hold_button == hold_button)) {
+        fprintf(stderr, "The two toggle keys and held buttons must be distinct.\n");
         return EXIT_FAILURE;
     }
 
@@ -274,11 +292,22 @@ invalid_value:
             return EXIT_FAILURE;
         }
     }
-    Window indicator = create_indicator(display, root, screen, size, color, opacity);
-    if (indicator == None) {
+    Window indicators[2] = {
+        create_indicator(display, root, screen, size, color, opacity), None
+    };
+    if (indicators[0] == None) {
         fprintf(stderr, "Could not create the hold indicator window.\n");
         XCloseDisplay(display);
         return EXIT_FAILURE;
+    }
+    if (right_toggle_keycode != 0) {
+        indicators[1] = create_indicator(display, root, screen, size, color, opacity);
+        if (indicators[1] == None) {
+            fprintf(stderr, "Could not create the second hold indicator window.\n");
+            XDestroyWindow(display, indicators[0]);
+            XCloseDisplay(display);
+            return EXIT_FAILURE;
+        }
     }
 
     XSetErrorHandler(remember_x_error);
@@ -291,6 +320,10 @@ invalid_value:
         XISelectEvents(display, root, &mask, 1);
         XGrabKey(display, (int)toggle_keycode, AnyModifier, root, False,
                  GrabModeAsync, GrabModeAsync);
+        if (right_toggle_keycode != 0) {
+            XGrabKey(display, right_toggle_keycode, AnyModifier, root, False,
+                     GrabModeAsync, GrabModeAsync);
+        }
     } else {
         XGrabButton(display, (unsigned int)toggle_button, AnyModifier, root, False,
                     ButtonPressMask | ButtonReleaseMask, GrabModeAsync, GrabModeAsync,
@@ -301,7 +334,8 @@ invalid_value:
         fprintf(stderr,
                 "Could not grab toggle input (X11 error %d). Another program may own it.\n",
                 x_error_code);
-        XDestroyWindow(display, indicator);
+        XDestroyWindow(display, indicators[0]);
+        if (indicators[1] != None) XDestroyWindow(display, indicators[1]);
         XCloseDisplay(display);
         return EXIT_FAILURE;
     }
@@ -313,14 +347,22 @@ invalid_value:
     sigaction(SIGTERM, &action, NULL);
     sigaction(SIGHUP, &action, NULL);
 
-    bool held = false;
-    bool toggle_is_down = false;
+    bool held[2] = {false, false};
+    bool key_is_down[2] = {false, false};
+    int keycodes[2] = {(int)toggle_keycode, right_toggle_keycode};
+    int buttons[2] = {hold_button, right_hold_button};
+    int offsets_x[2] = {offset_x, right_offset_x};
+    int active_key = -1;
+    struct timespec last_release = {0};
+    /* Input Remapper can release one mapped key just before pressing the other. */
+    const long switch_grace_ns = 50000000L;
     const struct timespec frame_delay = {.tv_sec = 0, .tv_nsec = 16000000L};
 
     while (running) {
         while (XPending(display) > 0) {
             XEvent event;
             XNextEvent(display, &event);
+            int key_index = -1;
             bool toggle_press = false;
             bool toggle_release = false;
             if (toggle_keycode != 0 && event.type == GenericEvent &&
@@ -328,7 +370,10 @@ invalid_value:
                 if (event.xcookie.evtype == XI_RawKeyPress ||
                     event.xcookie.evtype == XI_RawKeyRelease) {
                     XIRawEvent *raw = event.xcookie.data;
-                    if (raw->detail == toggle_keycode) {
+                    for (int index = 0; index < (right_toggle_keycode ? 2 : 1); index++) {
+                        if (raw->detail == keycodes[index]) key_index = index;
+                    }
+                    if (key_index >= 0) {
                         toggle_press = event.xcookie.evtype == XI_RawKeyPress;
                         toggle_release = event.xcookie.evtype == XI_RawKeyRelease;
                     }
@@ -339,47 +384,91 @@ invalid_value:
                                event.xbutton.button == (unsigned int)toggle_button;
                 toggle_release = event.type == ButtonRelease &&
                                  event.xbutton.button == (unsigned int)toggle_button;
+                if (toggle_press || toggle_release) key_index = 0;
             }
-            if (toggle_press && !toggle_is_down) {
-                toggle_is_down = true;
-                held = !held;
-                XTestFakeButtonEvent(display, (unsigned int)hold_button, held ? True : False,
+            if (toggle_press && key_index >= 0 && !key_is_down[key_index]) {
+                key_is_down[key_index] = true;
+                bool same_click = right_toggle_keycode != 0 &&
+                                  key_is_down[1 - key_index];
+                if (!same_click && right_toggle_keycode != 0 &&
+                    key_index != active_key && last_release.tv_sec != 0) {
+                    struct timespec now;
+                    clock_gettime(CLOCK_MONOTONIC, &now);
+                    long long elapsed = (long long)(now.tv_sec - last_release.tv_sec) *
+                                        1000000000LL + now.tv_nsec - last_release.tv_nsec;
+                    same_click = elapsed < switch_grace_ns;
+                }
+                if (same_click) continue;
+                active_key = key_index;
+                held[key_index] = !held[key_index];
+                XTestFakeButtonEvent(display, (unsigned int)buttons[key_index],
+                                     held[key_index] ? True : False,
                                      CurrentTime);
-                if (held) {
-                    move_indicator(display, root, indicator, screen, size, offset_x, offset_y);
-                    XMapRaised(display, indicator);
-                    draw_indicator(display, indicator, screen, size, color, opacity);
+                if (held[key_index]) {
+                    move_indicator(display, root, indicators[key_index], screen, size,
+                                   offsets_x[key_index], offset_y);
+                    XMapRaised(display, indicators[key_index]);
+                    draw_indicator(display, indicators[key_index], screen, size, color,
+                                   opacity);
                 } else {
-                    XUnmapWindow(display, indicator);
+                    XUnmapWindow(display, indicators[key_index]);
                 }
                 XFlush(display);
-            } else if (toggle_release) {
-                toggle_is_down = false;
+            } else if (toggle_release && key_index >= 0) {
+                key_is_down[key_index] = false;
+                if (active_key == key_index) {
+                    clock_gettime(CLOCK_MONOTONIC, &last_release);
+                }
             }
         }
-        if (toggle_keycode != 0 && toggle_is_down) {
+        if (toggle_keycode != 0) {
             char keys[32];
             XQueryKeymap(display, keys);
-            if ((keys[toggle_keycode / 8] & (1 << (toggle_keycode % 8))) == 0) {
-                toggle_is_down = false;
+            for (int index = 0; index < (right_toggle_keycode ? 2 : 1); index++) {
+                if ((keys[keycodes[index] / 8] & (1 << (keycodes[index] % 8))) == 0) {
+                    /* A grabbed key may have no matching raw release event. */
+                    if (key_is_down[index] && active_key == index) {
+                        clock_gettime(CLOCK_MONOTONIC, &last_release);
+                    }
+                    key_is_down[index] = false;
+                }
             }
         }
-        if (held) {
-            move_indicator(display, root, indicator, screen, size, offset_x, offset_y);
-            XFlush(display);
+        for (int index = 0; index < (right_toggle_keycode ? 2 : 1); index++) {
+            if (held[index]) {
+                move_indicator(display, root, indicators[index], screen, size,
+                               offsets_x[index], offset_y);
+                XFlush(display);
+            }
+        }
+        if (!key_is_down[0] && !key_is_down[1] && last_release.tv_sec != 0) {
+            struct timespec now;
+            clock_gettime(CLOCK_MONOTONIC, &now);
+            long long elapsed = (long long)(now.tv_sec - last_release.tv_sec) *
+                                1000000000LL + now.tv_nsec - last_release.tv_nsec;
+            if (elapsed >= switch_grace_ns) {
+                active_key = -1;
+                last_release.tv_sec = 0;
+            }
         }
         nanosleep(&frame_delay, NULL);
     }
 
-    if (held) {
-        XTestFakeButtonEvent(display, (unsigned int)hold_button, False, CurrentTime);
+    for (int index = 0; index < (right_toggle_keycode ? 2 : 1); index++) {
+        if (held[index]) {
+            XTestFakeButtonEvent(display, (unsigned int)buttons[index], False, CurrentTime);
+        }
     }
     if (toggle_keycode != 0) {
         XUngrabKey(display, (int)toggle_keycode, AnyModifier, root);
+        if (right_toggle_keycode != 0) {
+            XUngrabKey(display, right_toggle_keycode, AnyModifier, root);
+        }
     } else {
         XUngrabButton(display, (unsigned int)toggle_button, AnyModifier, root);
     }
-    XDestroyWindow(display, indicator);
+    XDestroyWindow(display, indicators[0]);
+    if (indicators[1] != None) XDestroyWindow(display, indicators[1]);
     XSync(display, False);
     XCloseDisplay(display);
     return EXIT_SUCCESS;

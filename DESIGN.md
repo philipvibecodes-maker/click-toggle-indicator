@@ -15,6 +15,8 @@ keycode 202; the daemon grabs that keycode directly, toggles logical button 1 th
 XTEST, and displays an input-transparent cursor indicator. A keyboard
 trigger is used because it remains grabbable while synthetic mouse button 1 is held;
 a passive mouse-button grab cannot reliably receive the release toggle in that state.
+One daemon receives both keycodes and treats a key transition during one switch press
+as one click, including a brief release between the two key events.
 
 - **Advantages:** correctly separates click from tap, preserves gestures, and relies
   on Input Remapper for privileged device forwarding and hot-plug behavior.
