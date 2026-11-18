@@ -15,10 +15,12 @@ Xvfb "$test_display" -screen 0 800x600x24 -nolisten tcp >/dev/null 2>&1 &
 xvfb_pid=$!
 daemon_pid=
 grabber_pid=
+reader_pid=
 test_dir=$(mktemp -d)
 cleanup() {
     [[ -z ${daemon_pid:-} ]] || kill "$daemon_pid" 2>/dev/null || true
     [[ -z ${grabber_pid:-} ]] || kill "$grabber_pid" 2>/dev/null || true
+    [[ -z ${reader_pid:-} ]] || kill "$reader_pid" 2>/dev/null || true
     [[ -z ${daemon_pid:-} ]] || wait "$daemon_pid" 2>/dev/null || true
     [[ -z ${grabber_pid:-} ]] || wait "$grabber_pid" 2>/dev/null || true
     kill "$xvfb_pid" 2>/dev/null || true
@@ -179,3 +181,60 @@ if DISPLAY=$test_display xinput query-state "$pointer_id" | grep -q 'button\[1\]
     exit 1
 fi
 echo "PASS: F24 toggled during another client's keyboard grab"
+
+kill "$grabber_pid"
+wait "$grabber_pid" 2>/dev/null || true
+grabber_pid=
+kill "$daemon_pid"
+wait "$daemon_pid"
+daemon_pid=
+
+# The Shell bridge consumes states rather than moving X11 overlay windows.
+DISPLAY=$test_display ./click-toggle-indicator --toggle-keycode 202 \
+    --right-toggle-keycode 197 --state-stdout >"$test_dir/states" &
+daemon_pid=$!
+sleep 0.1
+for key_and_state in '202 1' '197 0' '197 2' '202 0'; do
+    read -r key expected <<<"$key_and_state"
+    DISPLAY=$test_display xdotool key "$key"
+    sleep 0.1
+    if [[ $(tail -n 1 "$test_dir/states") != "$expected" ]]; then
+        echo "FAIL: state output did not match the held side" >&2
+        exit 1
+    fi
+done
+DISPLAY=$test_display xdotool key 197
+sleep 0.1
+kill "$daemon_pid"
+wait "$daemon_pid"
+daemon_pid=
+assert_buttons_up "state-output daemon left a button held on exit"
+if [[ $(tail -n 1 "$test_dir/states") != 0 ]]; then
+    echo "FAIL: state output was not cleared on exit" >&2
+    exit 1
+fi
+echo "PASS: external indicator state tracks both holds, cancellation, and shutdown"
+
+# Losing the bridge must release a button even without another click.
+mkfifo "$test_dir/state-pipe"
+head -n 2 <"$test_dir/state-pipe" >"$test_dir/pipe-states" &
+reader_pid=$!
+DISPLAY=$test_display ./click-toggle-indicator --toggle-keycode 202 \
+    --right-toggle-keycode 197 --state-stdout >"$test_dir/state-pipe" &
+daemon_pid=$!
+sleep 0.1
+DISPLAY=$test_display xdotool key 202
+for _ in {1..40}; do
+    kill -0 "$daemon_pid" 2>/dev/null || break
+    sleep 0.05
+done
+if kill -0 "$daemon_pid" 2>/dev/null; then
+    echo "FAIL: daemon did not exit when its state reader disappeared" >&2
+    exit 1
+fi
+wait "$reader_pid"
+reader_pid=
+wait "$daemon_pid"
+daemon_pid=
+assert_buttons_up "lost state reader stranded a synthetic button"
+echo "PASS: losing the display bridge releases the synthetic button"

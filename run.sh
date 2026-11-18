@@ -36,9 +36,13 @@ if ! python3 "$project_dir/tools/configure_input_remapper.py" --start; then
     exit 1
 fi
 
-"$indicator" --toggle-keycode 202 --hold-button 1 \
-    --right-toggle-keycode 197 --right-hold-button 3 \
-    --offset-x -26 --right-offset-x 30 --offset-y 18 "$@" &
+if [[ ${CLICK_TOGGLE_GNOME:-0} == 1 ]]; then
+    /usr/bin/python3 "$project_dir/tools/gnome_indicator_bridge.py" &
+else
+    "$indicator" --toggle-keycode 202 --hold-button 1 \
+        --right-toggle-keycode 197 --right-hold-button 3 \
+        --offset-x -26 --right-offset-x 30 --offset-y 18 "$@" &
+fi
 indicator_pid=$!
 
 echo "Left-half click holds button 1; right-half click holds button 3."

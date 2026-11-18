@@ -103,3 +103,63 @@ private GNOME Terminal window by its titlebar. The test removes its device and p
 when finished; it does not change the saved touchpad selection.
 
 See [DESIGN.md](DESIGN.md) for the explored implementation alternatives.
+
+## GNOME Shell indicator prototype
+
+The `prototype/gnome-shell-indicator` branch includes an alternative display for
+**GNOME Shell 46 on X11**. A Shell actor follows the pointer on the compositor's
+frame clock, drawing an antialiased blue dot with a light/dark outline. Application
+cursors (text, resize, links, drag, animated cursors) remain under application control.
+The original daemon still handles mechanical clicks, taps, and synthetic buttons;
+this prototype does **not** add Wayland input support.
+
+Install the extension and the Python GObject bindings:
+
+```sh
+sudo apt install python3-gi
+make
+./tools/install_gnome_extension.sh
+```
+
+Log out and back in so GNOME discovers the extension, then enable it:
+
+```sh
+gnome-extensions enable click-toggle-indicator@personal-utilities
+```
+
+After the usual `./setup.sh`, stop any running `./run.sh` instance and launch:
+
+```sh
+./run-gnome.sh
+```
+
+Ctrl-C stops the daemon, releases the held button, hides the dot, and stops the
+Input Remapper injection. Disabling the extension (including on session lock)
+makes the bridge stop the daemon; restart `./run-gnome.sh` after unlocking.
+The original `./run.sh` still uses the X11 indicator for comparison.
+
+The prototype uses an 18-pixel circle whose center is 28 logical pixels to the left
+or right of the pointer hotspot and 18 pixels below it. Change the constants and
+colors in `gnome-extension/extension.js`, reinstall, and log out/in to reload.
+Launcher appearance flags are not supported by `run-gnome.sh` yet. The dot keeps
+its offset at screen edges, so it may be partially offscreen.
+
+Movement is updated once per compositor frame while held; a hardware cursor can
+still move ahead of a separately rendered actor. This removes the external X11
+window-following loop but does not guarantee zero visible lag. Active holds also
+keep the frame clock running, even when the pointer is stationary.
+
+`make check` covers the original input behavior, the external display state stream,
+and release on bridge loss. The extension has also been checked in an isolated
+GNOME 46 compositor for loading, pointer offsets, rendering, expiry, and cleanup.
+The real daemon-to-Shell bridge and button release on extension disable were also
+verified using a private X server.
+Physical touchpad behavior, perceived lag, fractional scaling, multiple monitors,
+fullscreen applications, and locking still need validation on the target desktop.
+
+To return to the original display, stop `run-gnome.sh` and use `./run.sh`. To disable
+the prototype extension:
+
+```sh
+gnome-extensions disable click-toggle-indicator@personal-utilities
+```
