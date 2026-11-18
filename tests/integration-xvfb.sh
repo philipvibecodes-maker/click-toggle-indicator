@@ -71,6 +71,55 @@ fi
 
 echo "PASS: F19 toggled synthetic button 3 down and up"
 
+assert_buttons_up() {
+    if DISPLAY=$test_display xinput query-state "$pointer_id" | grep -Eq 'button\[(1|3)\]=down'; then
+        echo "FAIL: $1" >&2
+        exit 1
+    fi
+}
+
+for start_key in 202 197; do
+    if [[ $start_key == 202 ]]; then
+        cancel_key=197
+        cancel_button=3
+    else
+        cancel_key=202
+        cancel_button=1
+    fi
+    DISPLAY=$test_display xdotool key "$start_key"
+    sleep 0.1
+    DISPLAY=$test_display xdotool key "$cancel_key"
+    sleep 0.1
+    assert_buttons_up "opposite-half click did not only release the held button"
+
+    # A fresh click on the cancelling side can now start its own hold.
+    DISPLAY=$test_display xdotool key "$cancel_key"
+    sleep 0.1
+    if ! DISPLAY=$test_display xinput query-state "$pointer_id" | grep -q "button\[$cancel_button\]=down"; then
+        echo "FAIL: cancelling side did not rearm for the next click" >&2
+        exit 1
+    fi
+    DISPLAY=$test_display xdotool key "$start_key"
+    sleep 0.1
+    assert_buttons_up "opposite-half cancellation did not work after rearming"
+
+    # Crossing the midpoint during a cancelling click must not start a new hold.
+    DISPLAY=$test_display xdotool key "$start_key"
+    sleep 0.1
+    DISPLAY=$test_display xdotool keydown "$cancel_key" keydown "$start_key" \
+        keyup "$cancel_key" keyup "$start_key"
+    sleep 0.1
+    assert_buttons_up "crossing the midpoint during cancellation started a new hold"
+
+    DISPLAY=$test_display xdotool key "$start_key"
+    sleep 0.1
+    DISPLAY=$test_display xdotool keydown "$cancel_key" keyup "$cancel_key" \
+        keydown "$start_key" keyup "$start_key"
+    sleep 0.1
+    assert_buttons_up "a brief key-release gap during cancellation started a new hold"
+done
+echo "PASS: either half cancels either hold, including midpoint crossings, and rearms"
+
 DISPLAY=$test_display xdotool keydown 202
 DISPLAY=$test_display xdotool keydown 197
 DISPLAY=$test_display xdotool keyup 202

@@ -169,6 +169,14 @@ class TouchpadEndToEndTest(unittest.TestCase):
         self.toggle(900, 3, True)
         self.toggle(900, 3, False)
 
+    def test_opposite_half_releases_hold(self):
+        for start, cancel, button in ((100, 900, 1), (900, 100, 3)):
+            with self.subTest(button=button):
+                self.toggle(start, button, True)
+                self.toggle(cancel, button, False)
+                self.toggle(cancel, 3 if button == 1 else 1, True)
+                self.toggle(start, 3 if button == 1 else 1, False)
+
     def test_crossing_midpoint_during_click(self):
         for start, finish, button, other in ((100, 900, 1, 3),
                                              (900, 100, 3, 1)):

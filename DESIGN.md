@@ -17,6 +17,9 @@ trigger is used because it remains grabbable while synthetic mouse button 1 is h
 a passive mouse-button grab cannot reliably receive the release toggle in that state.
 One daemon receives both keycodes and treats a key transition during one switch press
 as one click, including a brief release between the two key events.
+When either synthetic button is held, the next physical click releases it regardless
+of which half emits the trigger. Only a click starting with no held button can begin
+a new hold.
 
 - **Advantages:** correctly separates click from tap, preserves gestures, and relies
   on Input Remapper for privileged device forwarding and hot-plug behavior.

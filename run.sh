@@ -41,7 +41,8 @@ fi
     --offset-x -26 --right-offset-x 30 --offset-y 18 "$@" &
 indicator_pid=$!
 
-echo "Left-half click toggles button 1; right-half click toggles button 3."
+echo "Left-half click holds button 1; right-half click holds button 3."
+echo "While either button is held, a physical click anywhere releases it."
 echo "The left indicator appears left of the cursor; the right indicator appears right."
 echo "Press Ctrl-C to stop."
 

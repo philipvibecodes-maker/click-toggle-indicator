@@ -400,18 +400,28 @@ invalid_value:
                 }
                 if (same_click) continue;
                 active_key = key_index;
-                held[key_index] = !held[key_index];
-                XTestFakeButtonEvent(display, (unsigned int)buttons[key_index],
-                                     held[key_index] ? True : False,
-                                     CurrentTime);
+                /* Any new physical click cancels an existing hold, on either side. */
+                bool released_hold = false;
+                for (int index = 0; index < (right_toggle_keycode ? 2 : 1); index++) {
+                    if (held[index]) {
+                        held[index] = false;
+                        released_hold = true;
+                        XTestFakeButtonEvent(display, (unsigned int)buttons[index],
+                                             False, CurrentTime);
+                        XUnmapWindow(display, indicators[index]);
+                    }
+                }
+                if (!released_hold) {
+                    held[key_index] = true;
+                    XTestFakeButtonEvent(display, (unsigned int)buttons[key_index],
+                                         True, CurrentTime);
+                }
                 if (held[key_index]) {
                     move_indicator(display, root, indicators[key_index], screen, size,
                                    offsets_x[key_index], offset_y);
                     XMapRaised(display, indicators[key_index]);
                     draw_indicator(display, indicators[key_index], screen, size, color,
                                    opacity);
-                } else {
-                    XUnmapWindow(display, indicators[key_index]);
                 }
                 XFlush(display);
             } else if (toggle_release && key_index >= 0) {

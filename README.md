@@ -1,10 +1,12 @@
 # click-toggle-indicator
 
 An Ubuntu X11 utility that turns the touchpad's mechanical left and right clicks into
-independent toggles:
+click-to-hold controls:
 
-1. a normal physical click toggles the left mouse button;
-2. a physical click in the clickpad's right half toggles the right button;
+1. when no button is held, a physical click on the left or right half holds the
+   corresponding mouse button;
+2. while either button is held, the next physical click anywhere on the clickpad
+   releases it without pressing another button;
 3. a translucent blue dot appears left or right of the cursor for the corresponding
    held button.
 
