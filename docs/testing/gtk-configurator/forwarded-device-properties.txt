@@ -1,0 +1,46 @@
+Device 'input-remapper CTI Configurator Test Touchpad 383972 forwarded':
+	Device Enabled (188):	1
+	Coordinate Transformation Matrix (190):	1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000
+	libinput Tapping Enabled (344):	0
+	libinput Tapping Enabled Default (345):	0
+	libinput Tapping Drag Enabled (346):	1
+	libinput Tapping Drag Enabled Default (347):	1
+	libinput Tapping Drag Lock Enabled (348):	0
+	libinput Tapping Drag Lock Enabled Default (349):	0
+	libinput Tapping Button Mapping Enabled (350):	1, 0
+	libinput Tapping Button Mapping Default (351):	1, 0
+	libinput Natural Scrolling Enabled (317):	1
+	libinput Natural Scrolling Enabled Default (318):	0
+	libinput Disable While Typing Enabled (352):	1
+	libinput Disable While Typing Enabled Default (353):	1
+	libinput Scroll Methods Available (319):	0, 1, 0
+	libinput Scroll Method Enabled (320):	0, 0, 0
+	libinput Scroll Method Enabled Default (321):	0, 1, 0
+	libinput Click Methods Available (354):	1, 0
+	libinput Click Method Enabled (355):	1, 0
+	libinput Click Method Enabled Default (356):	1, 0
+	libinput Middle Emulation Enabled (357):	0
+	libinput Middle Emulation Enabled Default (358):	0
+	libinput Accel Speed (326):	0.554717
+	libinput Accel Speed Default (327):	0.000000
+	libinput Accel Profiles Available (328):	1, 1, 1
+	libinput Accel Profile Enabled (329):	1, 0, 0
+	libinput Accel Profile Enabled Default (330):	1, 0, 0
+	libinput Accel Custom Fallback Points (331):	<no items>
+	libinput Accel Custom Fallback Step (332):	0.000000
+	libinput Accel Custom Motion Points (333):	<no items>
+	libinput Accel Custom Motion Step (334):	0.000000
+	libinput Accel Custom Scroll Points (335):	<no items>
+	libinput Accel Custom Scroll Step (336):	0.000000
+	libinput Left Handed Enabled (337):	0
+	libinput Left Handed Enabled Default (338):	0
+	libinput Send Events Modes Available (302):	1, 1
+	libinput Send Events Mode Enabled (303):	0, 0
+	libinput Send Events Mode Enabled Default (304):	0, 0
+	Device Node (305):	"/dev/input/event19"
+	Device Product ID (306):	1, 1
+	libinput Drag Lock Buttons (339):	<no items>
+	libinput Horizontal Scroll Enabled (340):	1
+	libinput Scrolling Pixel Distance (341):	15
+	libinput Scrolling Pixel Distance Default (342):	15
+	libinput High Resolution Wheel Scroll Enabled (343):	1

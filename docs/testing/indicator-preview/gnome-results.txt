@@ -1,0 +1,7 @@
+PASS: GNOME left pixels, color, independent offsets and size
+PASS: GNOME right pixels, color, independent offsets and size
+PASS: live Configure resized the held dot and rendered 50% opacity
+PASS: pointer motion, off state, and lease expiry
+PASS: D-Bus appearance validation rejects invalid values
+PASS: real C daemon/bridge loads settings; extension loss releases button
+PASS: real GNOME AppIndicator icon/menu rendered; Configure reopened GTK over D-BusMenu

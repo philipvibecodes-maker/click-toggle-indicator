@@ -9,13 +9,30 @@ if [[ ${XDG_SESSION_TYPE:-x11} != x11 ]]; then
     exit 1
 fi
 
-for command in python3; do
+for command in python3 flock; do
     if ! command -v "$command" >/dev/null 2>&1; then
         echo "Missing required command: $command" >&2
         echo "Run ./setup.sh after installing input-remapper." >&2
         exit 1
     fi
 done
+
+settings_file=$(mktemp)
+if ! /usr/bin/python3 "$project_dir/tools/settings.py" >"$settings_file"; then
+    rm -f "$settings_file"
+    exit 1
+fi
+mapfile -d '' -t appearance_args <"$settings_file"
+rm -f "$settings_file"
+
+# Every launcher shares this lock, including instances started by the tray app.
+lock_dir=${XDG_RUNTIME_DIR:-/tmp/click-toggle-indicator-$UID}
+mkdir -p "$lock_dir"
+exec 9>"$lock_dir/click-toggle-indicator.lock"
+if ! flock -n 9; then
+    echo "Click toggles are already running. Stop the other launcher first." >&2
+    exit 1
+fi
 
 indicator_pid=
 stopped=0
@@ -41,13 +58,13 @@ if [[ ${CLICK_TOGGLE_GNOME:-0} == 1 ]]; then
 else
     "$indicator" --toggle-keycode 202 --hold-button 1 \
         --right-toggle-keycode 197 --right-hold-button 3 \
-        --offset-x -26 --right-offset-x 30 --offset-y 18 "$@" &
+        "${appearance_args[@]}" "$@" &
 fi
 indicator_pid=$!
 
-echo "Left-half click holds button 1; right-half click holds button 3."
+echo "Clicks in the configured left/right regions hold buttons 1/3."
 echo "While either button is held, a physical click anywhere releases it."
-echo "The left indicator appears left of the cursor; the right indicator appears right."
+echo "Indicator colors and offsets come from saved settings or launcher options."
 echo "Press Ctrl-C to stop."
 
 set +e

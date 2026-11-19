@@ -1,0 +1,2 @@
+./tests/gtk-smoke.sh
+PASS: GTK previews, tray Configure, persistence, Apply restart, Stop release, and rollback

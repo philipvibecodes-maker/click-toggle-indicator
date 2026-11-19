@@ -1,0 +1,63 @@
+libmutter-Message: 14:52:22.890: Running GNOME Shell (using mutter 46.2) as a Wayland display server
+libmutter-Message: 14:52:22.922: Made thread 'KMS thread' realtime scheduled
+libmutter-Message: 14:52:22.929: Added device '/dev/dri/card1' (i915) using no mode setting.
+libmutter-Message: 14:52:22.931: Created gbm renderer for '/dev/dri/card1'
+libmutter-Message: 14:52:22.931: Boot VGA GPU /dev/dri/card1 selected as primary
+** Message: 14:52:22.932: Obtained a high priority EGL context
+** Message: 14:52:22.934: Obtained a high priority EGL context
+libmutter-Message: 14:52:22.941: Added virtual monitor Meta-0
+libmutter-Message: 14:52:22.944: Using Wayland display name 'cti-private-test'
+Window manager warning: Failed to set environment variable WAYLAND_DISPLAY for gnome-session: GDBus.Error:org.freedesktop.DBus.Error.NameHasNoOwner: Name "org.gnome.SessionManager" does not exist
+GNOME Shell-Message: 14:52:23.171: Unset XDG_SESSION_ID, getCurrentSessionProxy() called outside a user session. Asking logind directly.
+GNOME Shell-Message: 14:52:23.171: Will monitor session 2
+GNOME Shell-Message: 14:52:23.293: Extension ubuntu-appindicators@ubuntu.com already installed in /tmp/tmp.PuRoORKmIB/data/gnome-shell/extensions/ubuntu-appindicators@ubuntu.com. /usr/share/gnome-shell/extensions/ubuntu-appindicators@ubuntu.com will not be loaded
+
+** (gnome-shell:382306): WARNING **: 14:52:23.295: Could not issue 'GetUnit' systemd call
+
+(gnome-shell:382306): GNOME Shell-CRITICAL **: 14:52:23.324: Gio.DBusError: GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown: The name org.gnome.Shell.CalendarServer was not provided by any .service files
+
+Stack trace:
+  asyncCallback@resource:///org/gnome/gjs/modules/core/overrides/Gio.js:114:23
+  @resource:///org/gnome/shell/ui/init.js:21:20
+
+
+(gnome-shell:382306): GNOME Shell-CRITICAL **: 14:52:23.325: Gio.DBusError: GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown: The name org.gnome.Shell.CalendarServer was not provided by any .service files
+
+Stack trace:
+  asyncCallback@resource:///org/gnome/gjs/modules/core/overrides/Gio.js:114:23
+  @resource:///org/gnome/shell/ui/init.js:21:20
+
+invoking IsSupported() failed for remote volume monitor with dbus name org.gtk.vfs.UDisks2VolumeMonitor:: GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown: The name org.gtk.vfs.UDisks2VolumeMonitor was not provided by any .service files (g-dbus-error-quark, 2)
+invoking IsSupported() failed for remote volume monitor with dbus name org.gtk.vfs.GoaVolumeMonitor:: GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown: The name org.gtk.vfs.GoaVolumeMonitor was not provided by any .service files (g-dbus-error-quark, 2)
+invoking IsSupported() failed for remote volume monitor with dbus name org.gtk.vfs.MTPVolumeMonitor:: GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown: The name org.gtk.vfs.MTPVolumeMonitor was not provided by any .service files (g-dbus-error-quark, 2)
+invoking IsSupported() failed for remote volume monitor with dbus name org.gtk.vfs.GPhoto2VolumeMonitor:: GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown: The name org.gtk.vfs.GPhoto2VolumeMonitor was not provided by any .service files (g-dbus-error-quark, 2)
+invoking IsSupported() failed for remote volume monitor with dbus name org.gtk.vfs.AfcVolumeMonitor:: GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown: The name org.gtk.vfs.AfcVolumeMonitor was not provided by any .service files (g-dbus-error-quark, 2)
+portal is not running: GDBus.Error:org.freedesktop.DBus.Error.ServiceUnknown: The name org.freedesktop.portal.IBus was not provided by any .service files
+GNOME Shell-Message: 14:52:23.339: Failed to register AuthenticationAgent
+** Message: 14:52:23.410: Failed to start camera monitor
+
+(gnome-shell:382306): St-WARNING **: 14:52:23.468: Failed to open sliced image: Operation was cancelled
+
+(gnome-shell:382306): St-WARNING **: 14:52:23.468: Failed to open sliced image: Operation was cancelled
+GNOME Shell-Message: 14:52:23.858: GNOME Shell started at Wed Nov 18 2026 14:52:23 GMT-0800 (Pacific Standard Time)
+GNOME Shell-Message: 14:52:23.870: Registering session with GDM
+
+(gnome-shell:382306): GNOME Shell-CRITICAL **: 14:52:28.732: Exception in method call: Configure: Error: Invalid appearance: size
+
+Stack trace:
+  Configure@file:///tmp/tmp.PuRoORKmIB/data/gnome-shell/extensions/click-toggle-indicator@personal-utilities/extension.js:77:27
+  _handleMethodCall@resource:///org/gnome/gjs/modules/core/overrides/Gio.js:329:38
+  _wrapJSObject/<@resource:///org/gnome/gjs/modules/core/overrides/Gio.js:408:34
+  @resource:///org/gnome/shell/ui/init.js:21:20
+
+
+(gnome-shell:382306): GNOME Shell-CRITICAL **: 14:52:28.734: Exception in method call: Configure: Error: Invalid color: left_color
+
+Stack trace:
+  Configure@file:///tmp/tmp.PuRoORKmIB/data/gnome-shell/extensions/click-toggle-indicator@personal-utilities/extension.js:71:27
+  _handleMethodCall@resource:///org/gnome/gjs/modules/core/overrides/Gio.js:329:38
+  _wrapJSObject/<@resource:///org/gnome/gjs/modules/core/overrides/Gio.js:408:34
+  @resource:///org/gnome/shell/ui/init.js:21:20
+
+** Message: 14:52:31.531: Shutting down GNOME Shell
+libmutter-Message: 14:52:31.601: Removed virtual monitor Meta-0

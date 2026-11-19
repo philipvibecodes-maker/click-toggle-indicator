@@ -1,0 +1,25 @@
+/usr/bin/python3 -m unittest discover -s tests -p 'test_settings.py' -v
+/usr/lib/python3/dist-packages/inputremapper/logger.py:246: DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html
+  import pkg_resources
+/usr/lib/python3/dist-packages/pkg_resources/__init__.py:2871: DeprecationWarning: Deprecated call to `pkg_resources.declare_namespace('mpl_toolkits')`.
+Implementing implicit namespace packages (as specified in PEP 420) is preferred to `pkg_resources.declare_namespace`. See https://setuptools.pypa.io/en/latest/references/keywords.html#keyword-namespace-packages
+  declare_namespace(pkg)
+test_injector_actions_wait_for_confirmed_states (test_settings.PresetTests.test_injector_actions_wait_for_confirmed_states) ... ok
+test_owned_custom_presets_can_be_updated_but_edits_are_protected (test_settings.PresetTests.test_owned_custom_presets_can_be_updated_but_edits_are_protected) ... ok
+test_regions_through_real_remapper_pipeline (test_settings.PresetTests.test_regions_through_real_remapper_pipeline) ... ok
+test_reject_invalid_types_and_ranges (test_settings.SettingsTests.test_reject_invalid_types_and_ranges) ... ok
+test_round_trip_and_invalid_settings_leave_file_intact (test_settings.SettingsTests.test_round_trip_and_invalid_settings_leave_file_intact) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.285s
+
+OK
+./tests/integration-xvfb.sh
+PASS: F24 toggled synthetic button 1 down and up
+PASS: F19 toggled synthetic button 3 down and up
+PASS: either half cancels either hold, including midpoint crossings, and rearms
+PASS: one crossed click toggled only its starting side
+PASS: reverse key transition toggled only its starting side
+PASS: F24 toggled during another client's keyboard grab
+PASS: external indicator state tracks both holds, cancellation, and shutdown
+PASS: losing the display bridge releases the synthetic button

@@ -7,7 +7,7 @@ if [[ ${XDG_SESSION_TYPE:-x11} != x11 ]]; then
     exit 1
 fi
 if (( $# != 0 )); then
-    echo "Usage: ./run-gnome.sh (appearance constants are in gnome-extension/extension.js)" >&2
+    echo "Usage: ./run-gnome.sh (edit appearance with ./configure.sh)" >&2
     exit 1
 fi
 

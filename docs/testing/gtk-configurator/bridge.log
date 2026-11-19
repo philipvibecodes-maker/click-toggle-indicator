@@ -1,0 +1,2 @@
+GNOME indicator bridge: g-dbus-error-quark: GDBus.Error:org.freedesktop.DBus.Error.UnknownMethod: Object does not exist at path “/org/gnome/Shell/Extensions/ClickToggleIndicator” (19)
+Reinstall the extension with ./tools/install_gnome_extension.sh, log out/in, and enable click-toggle-indicator@personal-utilities in GNOME Shell 46.

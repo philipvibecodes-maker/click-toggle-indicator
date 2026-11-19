@@ -134,6 +134,33 @@ Normal SIGTERM shutdown released the button correctly. See the
 
 ## #6 — First stationary right-side click can select left
 
+**Restart reproduction (2026-11-18):** The real virtual-trackpad/configurator
+test also reproduced this after pressing Apply, which restarts injection:
+
+1. Click in the right region at `ABS_X=900`, then release the mechanical button
+   and touch contact.
+2. Restart injection while the mechanical button is **released**.
+3. Make a new click at exactly the same coordinates. The kernel can filter out
+   the unchanged ABS values, so the restarted injector receives the button event
+   without a fresh position event.
+4. With the normal midpoint preset, Input Remapper's right-region condition is
+   initially inactive, so its fallback emits F24 and holds button 1 instead of
+   emitting F19 and holding button 3.
+
+This does **not** require holding the physical button through the restart;
+that is a separate case not established by this reproduction. The incorrect
+classification can persist until a fresh axis event arrives, rather than being
+limited to one click. The normal click-anywhere-to-release behavior still applies.
+Moving the virtual contact by one coordinate unit generated a fresh event and
+restored correct right-click selection. Moving the finger slightly after Apply
+or startup is therefore a possible workaround; physical-device reproduction is
+still needed because drivers may emit fresh coordinates when contact resumes.
+
+See [the testing report](docs/TESTING.md) and the retained
+[live test results](docs/testing/gtk-configurator/results.txt). A proper fix would
+initialize region classification from the device's current coordinates instead
+of relying on a subsequent coordinate change.
+
 **Precondition:** Input Remapper begins injection while the touchpad's ABS_X
 value is in the right half, and no changed ABS_X event arrives before the
 mechanical switch event.

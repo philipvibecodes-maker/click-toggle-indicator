@@ -1,0 +1,2 @@
+PASS: preview matches actual XFixes cursor pixels, backend dot sizes, and independent fixed positions (48×48 cursor pixels, GTK scale 2)
+PASS: GTK previews, tray Configure, persistence, Apply restart, Stop release, and rollback

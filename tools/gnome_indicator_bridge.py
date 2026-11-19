@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 """Forward daemon state to Shell; leave cursor movement entirely inside Shell."""
 
+import json
 import os
 from pathlib import Path
 import selectors
@@ -10,6 +11,8 @@ import sys
 import time
 
 from gi.repository import Gio, GLib
+
+from settings import load_settings
 
 OBJECT_PATH = "/org/gnome/Shell/Extensions/ClickToggleIndicator"
 INTERFACE = "org.gnome.Shell.Extensions.ClickToggleIndicator"
@@ -35,6 +38,11 @@ def main():
 
     # Fail before starting input handling if the extension is unavailable.
     set_state(0)
+    bus.call_sync(
+        "org.gnome.Shell", OBJECT_PATH, INTERFACE, "Configure",
+        GLib.Variant("(s)", (json.dumps(load_settings()),)), None,
+        Gio.DBusCallFlags.NO_AUTO_START, 500, None,
+    )
     daemon = Path(__file__).resolve().parents[1] / "click-toggle-indicator"
     child = subprocess.Popen([
         str(daemon), "--toggle-keycode", "202", "--hold-button", "1",
@@ -79,8 +87,9 @@ def main():
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except (GLib.Error, OSError, RuntimeError) as error:
+    except (GLib.Error, OSError, RuntimeError, ValueError) as error:
         print(f"GNOME indicator bridge: {error}", file=sys.stderr)
-        print("Enable click-toggle-indicator@personal-utilities in GNOME Shell 46.",
+        print("Reinstall the extension with ./tools/install_gnome_extension.sh, log out/in, "
+              "and enable click-toggle-indicator@personal-utilities in GNOME Shell 46.",
               file=sys.stderr)
         sys.exit(1)

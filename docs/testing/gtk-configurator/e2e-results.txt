@@ -1,0 +1,12 @@
+Connected to the service
+test_crossing_midpoint_during_click (test_e2e_touchpad.TouchpadEndToEndTest.test_crossing_midpoint_during_click) ... ok
+test_left_click_during_keyboard_grab (test_e2e_touchpad.TouchpadEndToEndTest.test_left_click_during_keyboard_grab) ... ok
+test_left_click_toggle (test_e2e_touchpad.TouchpadEndToEndTest.test_left_click_toggle) ... ok
+test_opposite_half_releases_hold (test_e2e_touchpad.TouchpadEndToEndTest.test_opposite_half_releases_hold) ... ok
+test_right_click_toggle (test_e2e_touchpad.TouchpadEndToEndTest.test_right_click_toggle) ... ok
+test_terminal_titlebar_drag (test_e2e_touchpad.TouchpadEndToEndTest.test_terminal_titlebar_drag) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 6.012s
+
+OK
