@@ -1,0 +1,3 @@
+PASS: preview matches actual XFixes cursor pixels, backend dot sizes, and independent fixed positions (24×24 cursor pixels, GTK scale 2)
+PASS: real pointer drags update both backends, preserve independent positions, handle overlap/empty space, and clamp outside the preview (GTK scale 2)
+PASS: GTK previews, tray Configure, persistence, Apply restart, Stop release, and rollback

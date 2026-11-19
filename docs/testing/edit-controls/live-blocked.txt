@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/home/claude/personal-utilities/click-toggle-indicator/tests/virtual-trackpad.py", line 389, in <module>
+    main()
+  File "/home/claude/personal-utilities/click-toggle-indicator/tests/virtual-trackpad.py", line 60, in main
+    raise RuntimeError("A configurator is already running on this session bus. Use a dedicated test session; the existing app was left untouched.")
+RuntimeError: A configurator is already running on this session bus. Use a dedicated test session; the existing app was left untouched.

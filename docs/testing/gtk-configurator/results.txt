@@ -1,0 +1,18 @@
+PASS: configurator Start installed a unique preset and launched real injection
+PASS: duplicate launcher refused before changing the running injector
+PASS: real routing boundary=25%, corner=False, top=85% (5 points + cancellation)
+PASS: real routing boundary=75%, corner=False, top=85% (5 points + cancellation)
+PASS: real routing boundary=25%, corner=True, top=25% (5 points + cancellation)
+PASS: real routing boundary=25%, corner=True, top=75% (5 points + cancellation)
+PASS: real routing boundary=75%, corner=True, top=25% (5 points + cancellation)
+PASS: real routing boundary=75%, corner=True, top=75% (5 points + cancellation)
+PASS: real routing boundary=49.5%, corner=True, top=50.5% (5 points + cancellation)
+PASS: real routing boundary=50.5%, corner=False, top=85% (5 points + cancellation)
+PASS: left screenshot pixel confirms independent color, offsets, diameter, and disappearance
+PASS: right screenshot pixel confirms independent color, offsets, diameter, and disappearance
+KNOWN LIMITATION: after injector restart, an unchanged axis position used the fallback left mapping until a fresh ABS event
+PASS: X11 live Apply resized the dot to 36 px and rendered 50% opacity
+PASS: real libinput tap generated ordinary button-down/up without latching
+PASS: short mechanical right click did not produce an extra native tap in this run
+PASS: configurator Stop released a hold and stopped real injection
+PASS: settings persisted through real restarts

@@ -4,20 +4,24 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 from types import SimpleNamespace
+
+from settings import SETTINGS_PATH, load_settings, validate_settings
 
 from evdev import ecodes
 from inputremapper.configs.paths import CONFIG_PATH, sanitize_path_component
 from inputremapper.groups import groups
 
 PRESET_NAME = "click-toggle-indicator"
-SELECTION_PATH = Path.home() / ".config" / "click-toggle-indicator" / "device.json"
+SELECTION_PATH = SETTINGS_PATH.with_name("device.json")
 LEGACY_PRESET = [
     {
         "input_combination": [{"type": ecodes.EV_KEY, "code": ecodes.BTN_LEFT}],
@@ -52,6 +56,46 @@ PRESET = [
     },
     BOTTOM_RIGHT_PRESET[1],
 ]
+
+
+def build_preset(settings):
+    """Describe a right-side rectangle using the remapper's signed half axes.
+
+    Positive thresholds select ABOVE the midpoint, negative ones select BELOW.
+    Below-midpoint boundaries therefore describe exclusions. More-specific
+    combinations override less-specific mappings, just like the original preset.
+    """
+    settings = validate_settings(settings)
+    inside, outside = [], []
+    axes = [(ecodes.ABS_X, settings["boundary"])]
+    if settings["bottom_right_only"]:
+        axes.append((ecodes.ABS_Y, settings["corner_top"]))
+    for code, percent in axes:
+        threshold = int(percent * 2 - 100)
+        event = {"type": ecodes.EV_ABS, "code": code, "analog_threshold": threshold}
+        (inside if threshold > 0 else outside).append(event)
+    click = {"type": ecodes.EV_KEY, "code": ecodes.BTN_LEFT}
+
+    def mapping(conditions, symbol):
+        return {"input_combination": [*conditions, click],
+                "target_uinput": "keyboard", "output_symbol": symbol}
+
+    return [mapping([*inside, exclusion], "KEY_F24") for exclusion in outside] + [
+        mapping(inside, "KEY_F19")
+    ] + ([mapping([], "KEY_F24")] if inside else [])
+
+
+def preset_digest(value):
+    return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
+
+
+def is_saved_preset(group, value):
+    try:
+        selection = json.loads(SELECTION_PATH.read_text(encoding="utf-8"))
+        return (selection.get("key") == group.key and selection.get("name") == group.name
+                and selection.get("preset_digest") == preset_digest(value))
+    except (OSError, ValueError, AttributeError):
+        return False
 
 
 def is_project_legacy_preset(value) -> bool:
@@ -227,21 +271,24 @@ def preset_path(group) -> Path:
     return Path(CONFIG_PATH) / "presets" / device_dir / f"{PRESET_NAME}.json"
 
 
-def install(group, force: bool) -> Path:
+def install(group, force: bool, settings=None) -> Path:
+    preset = build_preset(load_settings() if settings is None else settings)
     path = preset_path(group)
     if path.exists():
         try:
             existing = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as error:
             raise RuntimeError(f"Cannot read existing preset {path}: {error}") from error
-        if existing not in (PRESET, BOTTOM_RIGHT_PRESET, LEGACY_PRESET) and not is_project_legacy_preset(existing) and not force:
+        if (existing not in (PRESET, BOTTOM_RIGHT_PRESET, LEGACY_PRESET)
+                and not is_project_legacy_preset(existing)
+                and not is_saved_preset(group, existing) and not force):
             raise RuntimeError(
                 f"Refusing to replace the existing preset {path}. "
                 "Re-run ./setup.sh --force to replace it."
             )
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(PRESET, indent=4) + "\n", encoding="utf-8")
+    path.write_text(json.dumps(preset, indent=4) + "\n", encoding="utf-8")
 
     config_path = Path(CONFIG_PATH) / "config.json"
     if not config_path.exists():
@@ -249,7 +296,8 @@ def install(group, force: bool) -> Path:
 
     SELECTION_PATH.parent.mkdir(parents=True, exist_ok=True)
     SELECTION_PATH.write_text(
-        json.dumps({"key": group.key, "name": group.name}, indent=4) + "\n",
+        json.dumps({"key": group.key, "name": group.name,
+                    "preset_digest": preset_digest(preset)}, indent=4) + "\n",
         encoding="utf-8",
     )
     return path
@@ -272,6 +320,18 @@ def daemon_action(group, start: bool) -> None:
             )
     else:
         daemon.stop_injecting(group.key)
+    # D-Bus acknowledges the request before the injector has grabbed/released its
+    # device. In particular, restarting immediately can race the previous grab.
+    deadline = time.monotonic() + 5
+    stopped_states = {"STOPPED", "UNKNOWN", "FAILED", "NO_GRAB", "UPGRADE_EVDEV"}
+    while time.monotonic() < deadline:
+        state = daemon.get_state(group.key)
+        if (start and state == "RUNNING") or (not start and state in stopped_states):
+            return
+        if start and state in stopped_states - {"UNKNOWN"}:
+            raise RuntimeError(f"Input Remapper injector did not start: {state}")
+        time.sleep(0.05)
+    raise RuntimeError("Timed out waiting for Input Remapper to " + ("start" if start else "stop"))
 
 
 def main() -> int:
@@ -293,7 +353,7 @@ def main() -> int:
             print(f"Installed {path}")
             print("Input:  EV_KEY/BTN_LEFT (1:272), the physical switch")
             print("Output: EV_KEY/KEY_F24 (1:194), X11 keycode 202")
-            print("Input:  right-half ABS_X + BTN_LEFT combination")
+            print("Input:  configured click region + BTN_LEFT combination")
             print("Output: EV_KEY/KEY_F19 (1:189), X11 keycode 197")
             print("BTN_TOUCH (330), used by tap-to-click, is not mapped.")
             print(f"Saved device selection: {group.key}")
@@ -302,7 +362,7 @@ def main() -> int:
         else:
             daemon_action(group, start=False)
         return 0
-    except (OSError, RuntimeError) as error:
+    except (OSError, RuntimeError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
 

@@ -1,0 +1,7 @@
+{
+    "uuid": "click-toggle-indicator@personal-utilities",
+    "name": "Click Toggle Indicator Prototype",
+    "description": "A cursor-following display for the click-toggle-indicator daemon. Preserves application cursors; requires the project's X11 input bridge.",
+    "shell-version": ["46"],
+    "version": 1
+}

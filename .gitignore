@@ -1,3 +1,5 @@
 /click-toggle-indicator
 __pycache__/
 *.pyc
+
+/artifacts/

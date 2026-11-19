@@ -8,6 +8,7 @@
 #include <X11/extensions/Xfixes.h>
 #include <X11/extensions/Xrender.h>
 #include <errno.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -43,11 +44,14 @@ static void usage(FILE *stream, const char *program) {
             "  --right-toggle-keycode N  second X11 keycode for a shared click cycle\n"
             "  --right-hold-button N    button held by the second key (default: 3)\n"
             "  --right-offset-x N     second indicator horizontal offset (default: 30)\n"
+            "  --right-offset-y N     second indicator vertical offset (default: --offset-y)\n"
+            "  --right-color COLOR    second indicator color (default: --color)\n"
             "  --size N           indicator diameter, 8..96 (default: 18)\n"
             "  --offset-x N       horizontal cursor offset (default: 18)\n"
             "  --offset-y N       vertical cursor offset (default: 18)\n"
             "  --color COLOR      X11 color name or #rrggbb (default: #3b82f6)\n"
             "  --opacity N        indicator opacity, 0.05..1.0 (default: 0.65)\n"
+            "  --state-stdout     emit 0/1/2 (off/left/right), without X11 indicators\n"
             "  --help             show this help\n",
             program);
 }
@@ -146,9 +150,10 @@ static void draw_indicator(Display *display, Window window, int screen, int size
     if (!XParseColor(display, DefaultColormap(display, screen), color_name, &color)) return;
     Picture destination = XRenderCreatePicture(display, window, format, 0, NULL);
     XRenderColor render_color = {
-        .red = color.red,
-        .green = color.green,
-        .blue = color.blue,
+        /* XRender solid fills store premultiplied ARGB components. */
+        .red = (unsigned short)(color.red * opacity + 0.5),
+        .green = (unsigned short)(color.green * opacity + 0.5),
+        .blue = (unsigned short)(color.blue * opacity + 0.5),
         .alpha = (unsigned short)(opacity * 65535.0 + 0.5),
     };
     Picture source = XRenderCreateSolidFill(display, &render_color);
@@ -186,16 +191,23 @@ int main(int argc, char **argv) {
     int right_toggle_keycode = 0;
     int right_hold_button = 3;
     int right_offset_x = 30;
+    int right_offset_y = 18;
+    const char *right_color = NULL;
     int size = 18;
     int offset_x = 18;
     int offset_y = 18;
     const char *color = "#3b82f6";
     double opacity = 0.65;
+    bool state_stdout = false;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--help") == 0) {
             usage(stdout, argv[0]);
             return EXIT_SUCCESS;
+        }
+        if (strcmp(argv[i], "--state-stdout") == 0) {
+            state_stdout = true;
+            continue;
         }
         if (i + 1 >= argc) {
             fprintf(stderr, "Missing value for %s\n", argv[i]);
@@ -224,14 +236,20 @@ int main(int argc, char **argv) {
             if (!parse_int(value, 1, 255, &right_hold_button)) goto invalid_value;
         } else if (strcmp(option, "--right-offset-x") == 0) {
             if (!parse_int(value, -512, 512, &right_offset_x)) goto invalid_value;
+        } else if (strcmp(option, "--right-offset-y") == 0) {
+            if (!parse_int(value, -512, 512, &right_offset_y)) goto invalid_value;
+        } else if (strcmp(option, "--right-color") == 0) {
+            right_color = value;
         } else if (strcmp(option, "--size") == 0) {
             if (!parse_int(value, 8, 96, &size)) goto invalid_value;
         } else if (strcmp(option, "--offset-x") == 0) {
             if (!parse_int(value, -512, 512, &offset_x)) goto invalid_value;
         } else if (strcmp(option, "--offset-y") == 0) {
             if (!parse_int(value, -512, 512, &offset_y)) goto invalid_value;
+            right_offset_y = offset_y;
         } else if (strcmp(option, "--color") == 0) {
             color = value;
+            right_color = value;
         } else if (strcmp(option, "--opacity") == 0) {
             if (!parse_double(value, 0.05, 1.0, &opacity)) goto invalid_value;
         } else {
@@ -292,16 +310,17 @@ invalid_value:
             return EXIT_FAILURE;
         }
     }
+    if (right_color == NULL) right_color = color;
     Window indicators[2] = {
-        create_indicator(display, root, screen, size, color, opacity), None
+        state_stdout ? None : create_indicator(display, root, screen, size, color, opacity), None
     };
-    if (indicators[0] == None) {
+    if (!state_stdout && indicators[0] == None) {
         fprintf(stderr, "Could not create the hold indicator window.\n");
         XCloseDisplay(display);
         return EXIT_FAILURE;
     }
-    if (right_toggle_keycode != 0) {
-        indicators[1] = create_indicator(display, root, screen, size, color, opacity);
+    if (!state_stdout && right_toggle_keycode != 0) {
+        indicators[1] = create_indicator(display, root, screen, size, right_color, opacity);
         if (indicators[1] == None) {
             fprintf(stderr, "Could not create the second hold indicator window.\n");
             XDestroyWindow(display, indicators[0]);
@@ -334,7 +353,7 @@ invalid_value:
         fprintf(stderr,
                 "Could not grab toggle input (X11 error %d). Another program may own it.\n",
                 x_error_code);
-        XDestroyWindow(display, indicators[0]);
+        if (indicators[0] != None) XDestroyWindow(display, indicators[0]);
         if (indicators[1] != None) XDestroyWindow(display, indicators[1]);
         XCloseDisplay(display);
         return EXIT_FAILURE;
@@ -346,12 +365,20 @@ invalid_value:
     sigaction(SIGINT, &action, NULL);
     sigaction(SIGTERM, &action, NULL);
     sigaction(SIGHUP, &action, NULL);
+    if (state_stdout) {
+        /* A lost display bridge must run normal synthetic-button cleanup. */
+        signal(SIGPIPE, SIG_IGN);
+        setvbuf(stdout, NULL, _IOLBF, 0);
+        if (puts("0") == EOF) running = 0;
+    }
 
     bool held[2] = {false, false};
     bool key_is_down[2] = {false, false};
     int keycodes[2] = {(int)toggle_keycode, right_toggle_keycode};
     int buttons[2] = {hold_button, right_hold_button};
     int offsets_x[2] = {offset_x, right_offset_x};
+    int offsets_y[2] = {offset_y, right_offset_y};
+    const char *colors[2] = {color, right_color};
     int active_key = -1;
     struct timespec last_release = {0};
     /* Input Remapper can release one mapped key just before pressing the other. */
@@ -359,6 +386,12 @@ invalid_value:
     const struct timespec frame_delay = {.tv_sec = 0, .tv_nsec = 16000000L};
 
     while (running) {
+        if (state_stdout) {
+            struct pollfd state_pipe = {.fd = fileno(stdout), .events = 0};
+            if (poll(&state_pipe, 1, 0) > 0 && (state_pipe.revents & (POLLERR | POLLHUP))) {
+                break;
+            }
+        }
         while (XPending(display) > 0) {
             XEvent event;
             XNextEvent(display, &event);
@@ -408,7 +441,7 @@ invalid_value:
                         released_hold = true;
                         XTestFakeButtonEvent(display, (unsigned int)buttons[index],
                                              False, CurrentTime);
-                        XUnmapWindow(display, indicators[index]);
+                        if (!state_stdout) XUnmapWindow(display, indicators[index]);
                     }
                 }
                 if (!released_hold) {
@@ -416,11 +449,13 @@ invalid_value:
                     XTestFakeButtonEvent(display, (unsigned int)buttons[key_index],
                                          True, CurrentTime);
                 }
-                if (held[key_index]) {
+                if (state_stdout) {
+                    if (printf("%d\n", released_hold ? 0 : key_index + 1) < 0) running = 0;
+                } else if (held[key_index]) {
                     move_indicator(display, root, indicators[key_index], screen, size,
-                                   offsets_x[key_index], offset_y);
+                                   offsets_x[key_index], offsets_y[key_index]);
                     XMapRaised(display, indicators[key_index]);
-                    draw_indicator(display, indicators[key_index], screen, size, color,
+                    draw_indicator(display, indicators[key_index], screen, size, colors[key_index],
                                    opacity);
                 }
                 XFlush(display);
@@ -445,9 +480,9 @@ invalid_value:
             }
         }
         for (int index = 0; index < (right_toggle_keycode ? 2 : 1); index++) {
-            if (held[index]) {
+            if (!state_stdout && held[index]) {
                 move_indicator(display, root, indicators[index], screen, size,
-                               offsets_x[index], offset_y);
+                               offsets_x[index], offsets_y[index]);
                 XFlush(display);
             }
         }
@@ -477,7 +512,8 @@ invalid_value:
     } else {
         XUngrabButton(display, (unsigned int)toggle_button, AnyModifier, root);
     }
-    XDestroyWindow(display, indicators[0]);
+    if (state_stdout) puts("0");
+    if (indicators[0] != None) XDestroyWindow(display, indicators[0]);
     if (indicators[1] != None) XDestroyWindow(display, indicators[1]);
     XSync(display, False);
     XCloseDisplay(display);

@@ -26,6 +26,30 @@ a new hold.
 - **Costs:** requires Input Remapper and X11.
 - **Fit:** selected implementation.
 
+### GNOME Shell display prototype
+
+The optional `--state-stdout` mode keeps the same X11 input handling but creates no
+indicator windows. It emits newline-delimited `0` (off), `1` (left), or `2` (right)
+on startup, state transitions, and shutdown. These are sides, independent of the
+configured synthetic button numbers. If its output pipe loses its reader, the
+daemon exits through its normal synthetic-button cleanup.
+
+`tools/gnome_indicator_bridge.py` launches that mode, forwards each state over the
+session bus to the extension's `SetState(u)` method on `org.gnome.Shell`, and renews
+the display state every 500 ms. Pointer coordinates never pass through this bridge.
+The extension hides stale state after two seconds. Failure to reach the extension
+stops the daemon, releasing any held button; the existing launcher then stops
+Input Remapper. Default extension lifecycle behavior disables the display on lock.
+
+The extension uses a nonreactive `St.DrawingArea` in Shell's top chrome, with no
+input region, and a `Clutter.Timeline` tied to the actor. While held, each frame
+reads the current pointer position and applies a fixed offset directly. Cairo draws
+the circle with antialiased alpha edges and contrasting outline rings. It neither
+replaces nor hides the native cursor. A separate actor can still trail a hardware
+cursor; the prototype is intended to evaluate how much this improves perceived lag.
+The frame clock stops when the display is off. The current prototype targets Shell
+46 and retains the X11 input backend; Wayland input would need a separate design.
+
 ## 2. Dedicated `libevdev` + `uinput` bridge
 
 Exclusively clone the touchpad into a virtual device, translating only code 272.
